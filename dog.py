@@ -18,6 +18,10 @@ TWILIO_FROM_NUMBER = os.getenv('TWILIO_FROM_NUMBER')
 TWILIO_TO_NUMBER = os.getenv('TWILIO_TO_NUMBER')
 TWILIO_SERVICE_SID = os.getenv('TWILIO_SERVICE_SID')
 
+# Pushover Configuration
+PUSHOVER_API_TOKEN = os.getenv('PUSHOVER_API_TOKEN')
+PUSHOVER_USER_KEY = os.getenv('PUSHOVER_USER_KEY')
+
 # Initialize OpenAI client
 openai.api_key = OPENAI_API_KEY
 # Initialize Twilio client
@@ -53,6 +57,27 @@ def send_text_alert(message):
         print(f"Sent text message SID: {message.sid}")
     except Exception as e:
         print(f"Error sending text message via Twilio: {e}")
+
+def send_pushover_alert(message, title="Dog Cam Alert"):
+    """Sends a notification via Pushover."""
+    if not PUSHOVER_API_TOKEN or not PUSHOVER_USER_KEY:
+        print("Pushover credentials not set. Cannot send notification.")
+        print(f"Title: {title}")
+        print(f"Message: {message}")
+        return
+
+    try:
+        payload = {
+            "token": PUSHOVER_API_TOKEN,
+            "user": PUSHOVER_USER_KEY,
+            "message": message,
+            "title": title
+        }
+        response = requests.post("https://api.pushover.net/1/messages.json", data=payload, timeout=10)
+        response.raise_for_status()
+        print("Sent Pushover notification successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending Pushover notification: {e}")
 
 def analyze_image_with_gpt(image_data):
     """Send image to ChatGPT for analysis"""
@@ -153,13 +178,14 @@ def main():
             print(f" {result.get('safety_concerns', '')}")
 
             if result.get('cleanliness_issues'):
-                print(f"\n🧹 CLEANLINESS NOTICE: {result['cleanliness_issues']}")
+                print(f"🧹 CLEANLINESS NOTICE: {result['cleanliness_issues']}")
 
             # New logic to send text
-            if result.get('isViewObstructed') or result.get('isDanger'):
-                print("\nSending text message alert...")
+            if result.get('isViewObstructed') or result.get('isDanger') or os.getenv('ENV') == 'dev':
+                print("\nSending notification alert...")
                 alert_message = json.dumps(result, indent=2)
-                send_text_alert(alert_message)
+                # send_text_alert(alert_message)
+                send_pushover_alert(alert_message)
 
         except json.JSONDecodeError:
             print("Error parsing JSON response:")
