@@ -57,7 +57,7 @@ Analyze this indoor pet camera image and provide a JSON response in the followin
 }
 
 Instructions for each field:
-- isDanger: true if there are any safety concerns or signs of distress, otherwise false. Safety concerns include items and food left on the coffee table or on the ground that could be dangerous to a dog. Glasses of water are fine. Chocolate and items containing chocolate are dangerous
+- isDanger: true if there are any safety concerns or signs of distress, otherwise false. Safety concerns include items and food left on the coffee table or on the ground that could be dangerous to a dog. Glasses of water are fine but ANY food or food containers are a danger. Chocolate and items containing chocolate are dangerous
 - isDogPresent: true if the dog is present, otherwise false. (Don't confuse the lamby plush toy with the dog. The dog is apricot colored.)
 - dog_location: Describe where the dog is in the room.
 - dog_activity: Describe the dog's activity or behavior. (Don't confuse the lamby plush toy with the dog. The dog is apricot colored.)
