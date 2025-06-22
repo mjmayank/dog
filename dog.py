@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import time
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 # Configuration
