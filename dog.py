@@ -7,6 +7,7 @@ import time
 from dotenv import load_dotenv
 import os
 from twilio.rest import Client
+import argparse
 
 load_dotenv()
 # Configuration
@@ -207,8 +208,17 @@ def continuous_monitoring(interval_minutes=5):
         print("\nMonitoring stopped by user")
 
 if __name__ == "__main__":
-    # For single analysis, run:
-    main()
+    parser = argparse.ArgumentParser(description="Pet camera monitoring script.")
+    parser.add_argument(
+        "-i", "--interval",
+        type=int,
+        default=5,
+        help="The interval in minutes for continuous monitoring. Default is 5."
+    )
+    args = parser.parse_args()
 
-    # For continuous monitoring, uncomment this line:
-    # continuous_monitoring(interval_minutes=5)
+    if args.interval:
+        continuous_monitoring(interval_minutes=args.interval)
+    else:
+        print("Running a single analysis.")
+        main()
