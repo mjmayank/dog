@@ -6,14 +6,22 @@ from datetime import datetime
 import time
 from dotenv import load_dotenv
 import os
+from twilio.rest import Client
 
 load_dotenv()
 # Configuration
 CAMERA_URL = "http://localhost:5000/snapshot/pet-cam.jpg"
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_FROM_NUMBER = os.getenv('TWILIO_FROM_NUMBER')
+TWILIO_TO_NUMBER = os.getenv('TWILIO_TO_NUMBER')
+TWILIO_SERVICE_SID = os.getenv('TWILIO_SERVICE_SID')
 
 # Initialize OpenAI client
 openai.api_key = OPENAI_API_KEY
+# Initialize Twilio client
+twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
 
 def capture_image():
     """Capture image from the camera snapshot endpoint"""
@@ -28,6 +36,23 @@ def capture_image():
 def encode_image_base64(image_data):
     """Convert image data to base64 string"""
     return base64.b64encode(image_data).decode('utf-8')
+
+def send_text_alert(message):
+    """Sends a text message via Twilio."""
+    if not twilio_client or not TWILIO_TO_NUMBER or not TWILIO_FROM_NUMBER:
+        print("Twilio credentials not fully set. Cannot send text alert.")
+        print(f"Message: {message}")
+        return
+
+    try:
+        message_body = f"Dog Cam Alert:\n\n{message}"
+
+        message = twilio_client.messages.create(
+            body=message_body, from_=TWILIO_FROM_NUMBER, to=TWILIO_TO_NUMBER
+        )
+        print(f"Sent text message SID: {message.sid}")
+    except Exception as e:
+        print(f"Error sending text message via Twilio: {e}")
 
 def analyze_image_with_gpt(image_data):
     """Send image to ChatGPT for analysis"""
@@ -60,7 +85,7 @@ Analyze this indoor pet camera image and provide a JSON response in the followin
 
 Instructions for each field:
 - isDanger: true if there are any safety concerns or signs of distress, otherwise false. Safety concerns include items and food left on the coffee table, sofa, or on the ground that could be dangerous to a dog. Glasses of water are fine but ANY food, food containers, or food wrappers are a danger. Chocolate and items containing chocolate are dangerous.
-- isViewObstructed: true if any part of the coffee table is blocked by furniture, objects, or people that prevent a clear view of the top surface — even partially. For example, if a chair, stool, or large object is blocking part of the table from the camera’s point of view, mark this as true. If the entire top surface of the coffee table is clearly visible and unobstructed, mark it as false.
+- isViewObstructed: true if any part of the coffee table is blocked by furniture, objects, or people that prevent a clear view of the top surface — even partially. For example, if a chair, stool, or large object is blocking part of the table from the camera's point of view, mark this as true. If the entire top surface of the coffee table is clearly visible and unobstructed, mark it as false.
 - isDogPresent: true if the dog is present, otherwise false. (Don't confuse the lamby plush toy with the dog. The dog is apricot colored.)
 - dog_location: Describe where the dog is in the room.
 - dog_activity: Describe the dog's activity or behavior. (Don't confuse the lamby plush toy with the dog. The dog is apricot colored.)
@@ -129,6 +154,12 @@ def main():
 
             if result.get('cleanliness_issues'):
                 print(f"\n🧹 CLEANLINESS NOTICE: {result['cleanliness_issues']}")
+
+            # New logic to send text
+            if result.get('isViewObstructed') or result.get('isDanger'):
+                print("\nSending text message alert...")
+                alert_message = json.dumps(result, indent=2)
+                send_text_alert(alert_message)
 
         except json.JSONDecodeError:
             print("Error parsing JSON response:")
