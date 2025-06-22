@@ -4,7 +4,9 @@ import openai
 import json
 from datetime import datetime
 import time
+from dotenv import load_dotenv
 
+load_dotenv()
 # Configuration
 CAMERA_URL = "http://localhost:5000/snapshot/pet-cam.jpg"
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
