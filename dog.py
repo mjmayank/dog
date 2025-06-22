@@ -29,7 +29,7 @@ def encode_image_base64(image_data):
 def analyze_image_with_gpt(image_data):
     """Send image to ChatGPT for analysis"""
     base64_image = encode_image_base64(image_data)
-    
+
     try:
         response = openai.chat.completions.create(
             model="gpt-4o",  # Use gpt-4o for vision capabilities
@@ -39,15 +39,31 @@ def analyze_image_with_gpt(image_data):
                     "content": [
                         {
                             "type": "text",
-                            "text": """Analyze this indoor pet camera image and provide a JSON response with the following information:
+                            "text": (
+                                """
+Analyze this indoor pet camera image and provide a JSON response in the following format:
 
-1. Dog presence and location
-2. Dog's activity/behavior (Don't confuse the lamby plush toy with the dog. The dog is apricot colored)
-3. Any safety concerns or signs of distress. Pay special attention to items left on the coffee table that should not normally be there. Glasses of water are okay.
-4. Cleanliness or safety issues such as dangerous items or foods in reach (messes, food on table, spilled food/water, scattered toys)
-5. Overall assessment
+{
+  isDanger: boolean,
+  isDogPresent: boolean,
+  dog_location: string,
+  dog_activity: string,
+  safety_concerns: string,
+  cleanliness_issues: string,
+  overall_assessment: string
+}
 
-Format as JSON with fields: dog_present, location, activity, safety_concerns, cleanliness_issues, overall_assessment, timestamp"""
+Instructions for each field:
+- isDanger: true if there are any safety concerns or signs of distress, otherwise false. Safety concerns include items and food left on the coffee table or on the ground that could be dangerous to a dog. Glasses of water are fine. Chocolate and items containing chocolate are dangerous
+- isDogPresent: true if the dog is present, otherwise false. (Don't confuse the lamby plush toy with the dog. The dog is apricot colored.)
+- dog_location: Describe where the dog is in the room.
+- dog_activity: Describe the dog's activity or behavior. (Don't confuse the lamby plush toy with the dog. The dog is apricot colored.)
+- safety_concerns: List any safety concerns or signs of distress. Pay special attention to items left on the coffee table that should not normally be there. Glasses of water are okay.
+- overall_assessment: Provide an overall summary of what the dog is doing.
+
+Return only the JSON object as your response.
+                                """
+                            )
                         },
                         {
                             "type": "image_url",
@@ -61,9 +77,9 @@ Format as JSON with fields: dog_present, location, activity, safety_concerns, cl
             max_tokens=500,
             response_format={"type": "json_object"}
         )
-        
+
         return response.choices[0].message.content
-    
+
     except Exception as e:
         print(f"Error analyzing image with GPT: {e}")
         return None
@@ -71,39 +87,42 @@ Format as JSON with fields: dog_present, location, activity, safety_concerns, cl
 def main():
     """Main function to capture and analyze image"""
     print(f"Starting pet camera analysis at {datetime.now()}")
-    
+
     # Capture image
     print("Capturing image...")
     image_data = capture_image()
-    
+
     if image_data is None:
         print("Failed to capture image. Exiting.")
         return
-    
+
     print(f"Image captured successfully ({len(image_data)} bytes)")
-    
+
     # Analyze with ChatGPT
     print("Analyzing with ChatGPT...")
     analysis = analyze_image_with_gpt(image_data)
-    
+
     if analysis:
         try:
             # Parse JSON response
             result = json.loads(analysis)
             result['timestamp'] = datetime.now().isoformat()
-            
+
             print("\n" + "="*50)
             print("ANALYSIS RESULTS:")
             print("="*50)
             print(json.dumps(result, indent=2))
-            
+
             # Check for alerts
-            if result.get('safety_concerns'):
-                print(f"\n🚨 SAFETY ALERT: {result['safety_concerns']}")
-            
+            if result.get('isDanger'):
+                print(f"\n🚨 SAFETY ALERT: ")
+            else:
+                print(f"\nNO SAFETY ALERT: ")
+            print(f" {result.get('safety_concerns', '')}")
+
             if result.get('cleanliness_issues'):
                 print(f"\n🧹 CLEANLINESS NOTICE: {result['cleanliness_issues']}")
-                
+
         except json.JSONDecodeError:
             print("Error parsing JSON response:")
             print(analysis)
@@ -114,7 +133,7 @@ def continuous_monitoring(interval_minutes=5):
     """Run continuous monitoring every X minutes"""
     print(f"Starting continuous monitoring (every {interval_minutes} minutes)")
     print("Press Ctrl+C to stop")
-    
+
     try:
         while True:
             main()
@@ -126,6 +145,6 @@ def continuous_monitoring(interval_minutes=5):
 if __name__ == "__main__":
     # For single analysis, run:
     main()
-    
+
     # For continuous monitoring, uncomment this line:
     # continuous_monitoring(interval_minutes=5)
